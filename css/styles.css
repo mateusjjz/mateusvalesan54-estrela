@@ -113,6 +113,15 @@
   font-size: 1.8rem;
   margin: 0 auto 1rem auto;
   backdrop-filter: blur(4px);
+  overflow: hidden;
+}
+
+.login-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+  display: block;
 }
 
 .login-header h2 {
@@ -326,6 +335,15 @@
   justify-content: center;
   font-size: 1.4rem;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.brand-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+  display: block;
 }
 
 .brand-text h2 {

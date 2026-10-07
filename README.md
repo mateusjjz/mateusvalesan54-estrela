@@ -1,4 +1,4 @@
-# 🏛️ Sistema de Compensação de Horário
+# 🏛️ Sistema de Compensação de Horário - SMED Lajeado
 
 Sistema web desenvolvido para substituir planilhas manuais de controle de **Sobra de Horas (Horas Trabalhadas)** e **Horas Tiradas (Compensação)** da Secretaria da Educação / Prefeitura Municipal de Lajeado.
 
