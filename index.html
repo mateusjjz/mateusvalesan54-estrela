@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Compensação de Horário | Prefeitura Municipal de Lajeado</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <!-- SheetJS para exportação em Excel (.xlsx) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+
+  <!-- ==========================================================================
+       TELA DE LOGIN INSTITUCIONAL (PREFEITURA DE LAJEADO)
+       ========================================================================== -->
+  <div class="login-screen-overlay" id="loginScreen">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="login-logo">🏛️</div>
+        <h2>Escola Lajeado</h2>
+      </div>
+
+      <div class="login-body">
+        <div class="login-error-msg" id="loginErrorMsg">
+          ⚠️ Usuário ou senha incorretos. Verifique suas credenciais.
+        </div>
+
+        <form id="loginForm" onsubmit="handleLoginFormSubmit(event)">
+          <div class="login-input-group">
+            <label for="loginUsername">Usuário</label>
+            <div class="login-input-wrap">
+              <span class="login-input-icon">👤</span>
+              <input type="text" id="loginUsername" class="login-input-control" required autocomplete="username">
+            </div>
+          </div>
+
+          <div class="login-input-group">
+            <label for="loginPassword">Senha</label>
+            <div class="login-input-wrap">
+              <span class="login-input-icon">🔒</span>
+              <input type="password" id="loginPassword" class="login-input-control" required autocomplete="current-password" style="padding-right: 2.85rem;">
+              <button type="button" class="btn-toggle-password" id="btnTogglePassword" onclick="togglePasswordVisibility()" title="Mostrar ou ocultar senha" aria-label="Mostrar ou ocultar senha">
+                👁️
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-login-submit" onclick="handleLoginFormSubmit(event)">
+            Acessar Sistema &rarr;
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-layout">
+
+    <!-- ==========================================================================
+         MENU LATERAL (SIDEBAR)
+         ========================================================================== -->
+    <aside class="sidebar" id="sidebar">
+      
+      <!-- Cabeçalho do Menu Lateral -->
+      <div class="sidebar-brand">
+        <div class="brand-icon">🏛️</div>
+        <div class="brand-text">
+          <h2>SMED Lajeado</h2>
+          <p>Compensação de Horas</p>
+        </div>
+      </div>
+
+      <!-- Navegação Principal -->
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">Menu Principal</div>
+
+        <a class="nav-item" data-view="dashboard" onclick="navigateTo('dashboard')">
+          <span class="nav-item-icon">📊</span>
+          <span>Dashboard</span>
+        </a>
+
+        <a class="nav-item active" data-view="registrar" onclick="navigateTo('registrar')">
+          <span class="nav-item-icon">🕒</span>
+          <span>Registrar Horas</span>
+        </a>
+
+        <a class="nav-item" data-view="matricula" onclick="navigateTo('matricula')">
+          <span class="nav-item-icon">👤</span>
+          <span>Minha Matrícula</span>
+        </a>
+
+        <!-- Seção de Ações & Documentos -->
+        <div class="nav-section-title" style="margin-top: 0.75rem;">Ações & Documentos</div>
+
+        <a class="nav-item" onclick="openOfficialPrintModal()" title="Gerar folha oficial para impressão ou PDF">
+          <span class="nav-item-icon">🖨️</span>
+          <span>Imprimir / PDF</span>
+        </a>
+      </nav>
+
+      <!-- Rodapé do Menu Lateral (Conta Conectada & Logout) -->
+      <div class="sidebar-footer">
+        <div class="sidebar-profile" onclick="navigateTo('matricula')" style="cursor:pointer;" title="Clique para gerenciar dados cadastrais">
+          <div class="profile-avatar" id="sidebarAvatar">AD</div>
+          <div class="profile-details">
+            <div class="profile-name" id="sidebarName">admin</div>
+            <div class="profile-sub" id="sidebarMatricula">Administrador</div>
+          </div>
+        </div>
+        <div style="margin-top: 0.65rem; display: flex; justify-content: space-between; align-items: center;">
+          <span id="sidebarRoleBadge" class="admin-only-badge" style="margin-left: 0;">👑 Administrador</span>
+          <button type="button" class="btn-logout" onclick="handleLogout()" title="Sair do sistema">
+            <span>🚪</span> Sair
+          </button>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- ==========================================================================
+         CONTEÚDO PRINCIPAL (MAIN WRAPPER - TELA CHEIA E ESPAÇOSA)
+         ========================================================================== -->
+    <div class="main-wrapper">
+
+      <!-- Header apenas para telas mobile pequenas -->
+      <div class="mobile-topbar no-print">
+        <span style="font-weight:700;">SMED Lajeado</span>
+        <button class="btn-mobile-toggle" onclick="toggleMobileSidebar()" aria-label="Abrir Menu">☰</button>
+      </div>
+
+      <!-- ÁREA DE PÁGINAS (SEM BARRA POLUÍDA NO TOPO) -->
+      <main class="page-container no-print">
+
+        <!-- ====================================================================
+             TELA 1: REGISTRAR HORAS (TELA CHEIA - PADRÃO)
+             ==================================================================== -->
+        <section class="page-view active" id="view-registrar">
+
+          <!-- Barra de Alternância de Matrículas (Exclusiva para Administrador) -->
+          <div id="adminServerBar" style="display:none; background:#ffffff; border:1px solid var(--border-accent); border-left:5px solid #d97706; padding:0.85rem 1.25rem; border-radius:var(--radius-md); margin-bottom:1.25rem; box-shadow:var(--shadow-sm);">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+              <div>
+                <strong style="color:var(--primary-900); font-size:0.925rem;">👑 Administrador &bull; Gerenciamento de Matrículas:</strong>
+                <span style="font-size:0.825rem; color:var(--text-muted); margin-left:0.5rem;">Visualizando todas as matrículas cadastradas</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:0.5rem;">
+                <label for="adminSelectServer" style="font-size:0.8rem; font-weight:700; color:var(--text-muted);">Servidor Ativo:</label>
+                <select id="adminSelectServer" class="input-control" style="width:auto; padding:0.4rem 0.8rem; font-weight:700;" onchange="changeActiveServerAsAdmin(this.value)">
+                </select>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="addNewServerFromMatricula()">➕ Nova Matrícula</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="records-panel">
+            <div class="records-header">
+              <div class="records-header-left">
+                <div>
+                  <h3 class="records-header-title">
+                    <span>⏱️ Histórico de Lançamentos do Servidor</span>
+                  </h3>
+                  <p class="records-header-subtitle">Gerencie suas horas de sobra e compensações em tela cheia</p>
+                </div>
+              </div>
+
+              <!-- BOTÃO AZUL DESTACADO NO CANTO SUPERIOR DIREITO -->
+              <div>
+                <button type="button" class="btn-add-time" onclick="openEntryHud('WORKED')">
+                  <span>➕</span>
+                  <span>Registrar Horário</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Tabela em Tela Cheia e Espaçosa -->
+            <div class="table-container" id="registerFullTableContainer">
+              <!-- Preenchido via app.js -->
+            </div>
+          </div>
+
+        </section>
+
+        <!-- ====================================================================
+             TELA 2: DASHBOARD
+             ==================================================================== -->
+        <section class="page-view" id="view-dashboard">
+
+          <!-- Banner Informativo -->
+          <div class="dashboard-banner">
+            <div class="banner-info">
+              <h3>Bem-vinda(o), <span id="dashBannerName">Franciele</span>!</h3>
+              <p>Resumo geral do seu banco de horas e compensações da Secretaria da Educação.</p>
+            </div>
+            <div class="banner-meta">
+              <div class="banner-badge" id="dashBannerMatricula">Matrícula: 4820</div>
+              <div class="banner-badge" id="dashBannerEmei">EMEI: PRIMEIROS PASSOS</div>
+              <div class="banner-badge" id="dashBannerAno">Ano: 2026</div>
+            </div>
+          </div>
+
+          <!-- Cards de KPIs (Totalizadores) -->
+          <div class="stats-grid">
+            <div class="stat-card stat-card-worked">
+              <div class="stat-icon">🕒</div>
+              <div class="stat-info">
+                <div class="stat-label">Total Horas Trabalhadas (Sobra)</div>
+                <div class="stat-value" id="dashWorkedHours">00:00</div>
+                <span class="stat-badge">Créditos Acumulados</span>
+              </div>
+            </div>
+
+            <div class="stat-card stat-card-taken">
+              <div class="stat-icon">🗓️</div>
+              <div class="stat-info">
+                <div class="stat-label">Total Horas Tiradas (Faltantes)</div>
+                <div class="stat-value" id="dashTakenHours">00:00</div>
+                <span class="stat-badge">Compensações Realizadas</span>
+              </div>
+            </div>
+
+            <div class="stat-card stat-card-balance" id="dashBalanceCard">
+              <div class="stat-icon">⚖️</div>
+              <div class="stat-info">
+                <div class="stat-label">Saldo de Horas Líquido</div>
+                <div class="stat-value" id="dashBalanceHours">00:00</div>
+                <span class="stat-badge" id="dashBalanceBadge">Sobra de Horas</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabela de Registros com Abas (Espelho da Folha Oficial) -->
+          <div class="records-panel">
+            <div class="records-header">
+              <div class="records-header-left">
+                <h3 class="records-header-title">
+                  <span>📋 Espelho da Folha de Compensação</span>
+                </h3>
+              </div>
+              <div style="display:flex; gap:0.6rem;">
+                <button class="btn-add-time btn-sm" onclick="openEntryHud('WORKED')">
+                  ➕ Registrar Horário
+                </button>
+                <button class="btn btn-primary btn-sm" onclick="openOfficialPrintModal()">
+                  📄 Visualizar Folha Oficial A4
+                </button>
+              </div>
+            </div>
+
+            <div class="view-tabs">
+              <button class="view-tab-btn active dash-view-tab" data-tab="side-by-side">
+                <span>⚖️ Espelho Lado a Lado (Oficial)</span>
+                <span class="count-pill" id="dashCountSide">0</span>
+              </button>
+              <button class="view-tab-btn dash-view-tab" data-tab="worked">
+                <span>🕒 Horas Trabalhadas (Sobra)</span>
+                <span class="count-pill" id="dashCountWorked">0</span>
+              </button>
+              <button class="view-tab-btn dash-view-tab" data-tab="taken">
+                <span>🗓️ Horas Faltantes (Tiradas)</span>
+                <span class="count-pill" id="dashCountTaken">0</span>
+              </button>
+            </div>
+
+            <div class="table-container" id="dashTableContainer">
+              <!-- Preenchido via app.js -->
+            </div>
+          </div>
+
+        </section>
+
+        <!-- ====================================================================
+             TELA 3: MINHA MATRÍCULA
+             ==================================================================== -->
+        <section class="page-view" id="view-matricula">
+
+          <div class="profile-screen-layout">
+
+            <!-- Card Visual do Servidor -->
+            <div class="profile-card-main">
+              <div class="profile-avatar-large" id="matProfileAvatar">FR</div>
+              <h3 id="matProfileName">Franciele</h3>
+              <p id="matProfileSub">Matrícula: 4820 • PRIMEIROS PASSOS</p>
+
+              <div class="profile-stats-mini">
+                <div class="mini-stat-box">
+                  <div class="mini-stat-label">Trabalhado</div>
+                  <div class="mini-stat-value" id="matMiniWorked">00:00</div>
+                </div>
+                <div class="mini-stat-box">
+                  <div class="mini-stat-label">Tirado</div>
+                  <div class="mini-stat-value" id="matMiniTaken">00:00</div>
+                </div>
+                <div class="mini-stat-box" style="grid-column: span 2;">
+                  <div class="mini-stat-label">Saldo Atual</div>
+                  <div class="mini-stat-value" id="matMiniBalance" style="color:var(--primary-600);">00:00</div>
+                </div>
+              </div>
+
+              <div id="matAddServerWrap" style="margin-top:1.5rem;">
+                <button class="btn btn-secondary btn-sm" style="width:100%;" onclick="addNewServerFromMatricula()">
+                  ➕ Cadastrar Nova Matrícula
+                </button>
+              </div>
+            </div>
+
+            <!-- Formulário de Edição de Dados Cadastrais -->
+            <div class="profile-form-card">
+              <div class="profile-form-header">
+                <div>
+                  <h4>Dados Cadastrais da Ficha</h4>
+                  <p style="font-size:0.8rem; color:var(--text-muted);">Estes dados são impressos na folha oficial de compensação de horário.</p>
+                </div>
+                <div id="matSelectServerWrap">
+                  <label for="matSelectServer" style="font-size:0.75rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:2px;">Selecionar Matrícula:</label>
+                  <select id="matSelectServer" class="input-control" style="font-size:0.85rem; padding:0.4rem 0.75rem;" onchange="changeActiveServerFromMatricula(this.value)">
+                    <!-- Preenchido via app.js -->
+                  </select>
+                </div>
+              </div>
+
+              <div id="matSaveSuccessMsg" style="display:none; background:var(--success-bg); color:var(--success-color); padding:0.75rem 1rem; border-radius:var(--radius-md); margin-bottom:1.25rem; font-size:0.875rem; font-weight:600; border:1px solid #a7f3d0;">
+                ✅ Dados da matrícula atualizados com sucesso!
+              </div>
+
+              <form onsubmit="saveMatriculaProfile(event)">
+                <div class="form-grid-2">
+                  <div class="form-group">
+                    <label for="matInputNome">Nome do Servidor(a)</label>
+                    <input type="text" id="matInputNome" class="input-control" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="matInputMatricula">Matrícula</label>
+                    <input type="text" id="matInputMatricula" class="input-control" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="matInputEmei">EMEI / Escola</label>
+                    <input type="text" id="matInputEmei" class="input-control" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="matInputAno">Ano de Referência</label>
+                    <input type="number" id="matInputAno" class="input-control" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="matInputCargo">Cargo / Função</label>
+                    <input type="text" id="matInputCargo" class="input-control" placeholder="Ex: Professora / Servidora">
+                  </div>
+                  <div class="form-group">
+                    <label for="matInputLancador">Lançado por (Responsável)</label>
+                    <input type="text" id="matInputLancador" class="input-control" placeholder="Ex: Diretoria / Coordenação">
+                  </div>
+                </div>
+
+                <div style="margin-top:1.5rem; display:flex; justify-content:flex-end; gap:0.75rem;">
+                  <button type="submit" class="btn btn-primary">
+                    💾 Salvar Dados da Matrícula
+                  </button>
+                </div>
+              </form>
+
+              <!-- Seção de Cópia / Transferência para outro PC -->
+              <div style="margin-top: 1.75rem; padding-top: 1.25rem; border-top: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.85rem;">
+                <div>
+                  <h5 style="font-size: 0.875rem; font-weight: 700; color: var(--primary-900); margin-bottom: 2px;">📦 Transferência de Dados entre Computadores</h5>
+                  <p style="font-size: 0.775rem; color: var(--text-muted); margin: 0;">Exporte seus lançamentos para levar ao novo computador ou restaurar uma cópia.</p>
+                </div>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="backupData()" title="Baixar arquivo com todos os dados e lançamentos salvos">
+                    💾 Exportar Dados (.json)
+                  </button>
+                  <label class="btn btn-secondary btn-sm" style="margin: 0; cursor: pointer;" title="Carregar arquivo de dados salvo em outro computador">
+                    📂 Importar Dados
+                    <input type="file" id="importBackupInput" accept=".json" style="display: none;" onchange="restoreData(event)">
+                  </label>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </section>
+
+      </main>
+
+    </div>
+
+  </div>
+
+  <!-- ==========================================================================
+       HUD DE LANÇAMENTO DE HORÁRIO (MODAL FLUTUANTE QUE ABRE PELO BOTÃO AZUL)
+       ========================================================================== -->
+  <div class="hud-overlay" id="entryHudModal">
+    <div class="hud-card">
+      
+      <!-- Cabeçalho do HUD -->
+      <div class="hud-header">
+        <h3 id="hudTitleText">➕ Lançamento de Horário</h3>
+        <button type="button" class="hud-close-btn" onclick="closeEntryHud()" title="Fechar (ESC)">&times;</button>
+      </div>
+
+      <!-- Corpo do HUD -->
+      <div class="hud-body">
+
+        <!-- Alternador entre Sobra e Tirada -->
+        <div class="type-toggle">
+          <button type="button" class="type-toggle-btn active type-worked" id="hudBtnTypeWorked" onclick="selectHudType('WORKED')">
+            🕒 Hora Trabalhada (Sobra)
+          </button>
+          <button type="button" class="type-toggle-btn" id="hudBtnTypeTaken" onclick="selectHudType('TAKEN')">
+            🗓️ Hora Tirada (Faltante)
+          </button>
+        </div>
+
+        <form id="hudTimeEntryForm">
+          <input type="hidden" id="hudEditRecordId" value="">
+
+          <!-- Data -->
+          <div class="form-group">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem;">
+              <label for="hudRecordDate" style="margin-bottom:0;">Data do Registro</label>
+              <button type="button" class="btn btn-secondary btn-sm" id="hudBtnSetToday" style="padding:0.2rem 0.5rem; font-size:0.75rem;">📅 Hoje</button>
+            </div>
+            <input type="date" id="hudRecordDate" class="input-control" required>
+          </div>
+
+          <!-- Horários: Início e Fim com Seleção Separada (Hora primeiro, depois Minuto) -->
+          <div class="form-row-2">
+            <!-- Horário de Início -->
+            <div class="form-group">
+              <label style="font-weight:700;">Horário de Início</label>
+              <div class="split-time-container">
+                <div class="split-field">
+                  <span class="split-sublabel">1º Hora</span>
+                  <select id="startHour" class="split-select" required onchange="onStartHourChanged()">
+                    <option value="" disabled selected>Hora</option>
+                  </select>
+                </div>
+                <span class="split-colon">:</span>
+                <div class="split-field">
+                  <span class="split-sublabel">2º Minuto</span>
+                  <select id="startMinute" class="split-select" required onchange="updateHudCalcPreview()">
+                    <option value="" disabled selected>Min</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Horário de Término -->
+            <div class="form-group">
+              <label style="font-weight:700;">Horário de Término</label>
+              <div class="split-time-container">
+                <div class="split-field">
+                  <span class="split-sublabel">1º Hora</span>
+                  <select id="endHour" class="split-select" required onchange="onEndHourChanged()">
+                    <option value="" disabled selected>Hora</option>
+                  </select>
+                </div>
+                <span class="split-colon">:</span>
+                <div class="split-field">
+                  <span class="split-sublabel">2º Minuto</span>
+                  <select id="endMinute" class="split-select" required onchange="updateHudCalcPreview()">
+                    <option value="" disabled selected>Min</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Duração Calculada em Tempo Real -->
+          <div class="calculated-box">
+            <span class="calc-label">⏱️ Total deste lançamento:</span>
+            <span class="calc-value" id="hudCalcPreview">00:00</span>
+          </div>
+
+          <!-- Justificativa (apenas para Horas Trabalhadas) -->
+          <div class="form-group" id="hudJustificationGroup">
+            <label for="hudRecordJustification">Justificativa para o Tempo Trabalhado</label>
+            <input type="text" id="hudRecordJustification" class="input-control" placeholder="Ex: Auxílio a pedido da equipe diretiva" required>
+            
+            <div style="margin-top:0.75rem;">
+              <div class="quick-tags-title">Sugestões Frequentes:</div>
+              <div class="quick-tags">
+                <button type="button" class="tag-btn" onclick="selectHudJustification('Auxílio a pedido da equipe diretiva')">Auxílio a pedido da diretiva</button>
+                <button type="button" class="tag-btn" onclick="selectHudJustification('Mini curso online')">Mini curso online</button>
+                <button type="button" class="tag-btn" onclick="selectHudJustification('Seminário SIM')">Seminário SIM</button>
+                <button type="button" class="tag-btn" onclick="selectHudJustification('Reunião pedagógica')">Reunião pedagógica</button>
+                <button type="button" class="tag-btn" onclick="selectHudJustification('Reunião de turma')">Reunião de turma</button>
+                <button type="button" class="tag-btn" onclick="selectHudJustification('Encontro formativo')">Encontro formativo</button>
+                <button type="button" class="tag-btn" onclick="selectHudJustification('Entrega de portfólio na escola')">Entrega de portfólio</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Ações do HUD -->
+          <div class="hud-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeEntryHud()">Cancelar</button>
+            <button type="submit" class="btn btn-primary" id="hudSubmitBtn">➕ Adicionar Horário</button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL DE IMPRESSÃO / FOLHA OFICIAL A4 (PDF)
+       ========================================================================== -->
+  <div class="hud-overlay" id="printModal">
+    <div class="hud-card" style="max-width:980px;">
+      <div class="hud-header no-print">
+        <h3>📄 Visualização do Documento Oficial (Prefeitura de Lajeado)</h3>
+        <button class="hud-close-btn" onclick="closePrintModal()">&times;</button>
+      </div>
+
+      <div class="hud-body" id="printModalContent" style="padding:1rem;">
+        <!-- Folha formatada A4 gerada dinamicamente -->
+      </div>
+
+      <div class="hud-actions no-print" style="padding:1rem 1.5rem; margin-top:0;">
+        <button class="btn btn-secondary" onclick="closePrintModal()">Fechar</button>
+        <button class="btn btn-primary" onclick="executePrint()">🖨️ Imprimir / Salvar em PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Script da Aplicação -->
+  <script src="js/app.js"></script>
+  <script>
+    // Exportação em Excel com SheetJS
+    function exportDataExcel() {
+      if (typeof XLSX === 'undefined') {
+        exportToCSV();
+        return;
+      }
+
+      const server = getActiveServer();
+      const totals = calculateTotals();
+      const activeRecs = getActiveRecords();
+
+      const worked = activeRecs.filter(r => r.type === 'WORKED').sort((a,b) => a.date.localeCompare(b.date));
+      const taken = activeRecs.filter(r => r.type === 'TAKEN').sort((a,b) => a.date.localeCompare(b.date));
+      const maxRows = Math.max(worked.length, taken.length);
+
+      const rows = [
+        ["Prefeitura Municipal de Lajeado"],
+        ["Secretaria da Educação"],
+        ["Registro de Compensação de Horário"],
+        [],
+        ["EMEI:", server.emei || "", "Servidor:", server.nome || "", "Matrícula:", server.matricula || "", "Ano:", server.ano || "2026"],
+        [],
+        ["TURNO/HORÁRIO TRABALHADO", "", "", "", "JUSTIFICATIVA PARA O TEMPO TRABALHADO", "TURNO/HORÁRIO FALTANTE", "", "", ""],
+        ["DIA", "INÍCIO", "TÉRMINO", "TOTAL DE HORAS", "", "DIA", "INÍCIO", "TÉRMINO", "TOTAL DE HORAS"]
+      ];
+
+      for (let i = 0; i < maxRows; i++) {
+        const w = worked[i];
+        const t = taken[i];
+
+        rows.push([
+          w ? formatDateBR(w.date) : "",
+          w ? w.startTime : "",
+          w ? w.endTime : "",
+          w ? minutesToHHMM(w.durationMinutes) : "",
+          w ? (w.justification || "") : "",
+          t ? formatDateBR(t.date) : "",
+          t ? t.startTime : "",
+          t ? t.endTime : "",
+          t ? minutesToHHMM(t.durationMinutes) : ""
+        ]);
+      }
+
+      rows.push([]);
+      rows.push(["TOTAL DE HORAS TRABALHADAS", "", "", totals.workedHHMM, "", "TOTAL DE HORAS FALTANTES", "", "", totals.takenHHMM]);
+      rows.push(["", "", "", "", "Saldo de Horas:", (totals.isPositive ? "+" : "-") + totals.balanceHHMM]);
+      rows.push([]);
+      rows.push(["Lançado por:", server.lancadoPor || "Diretoria / Coordenação", "Data:", formatDateBR(new Date().toISOString().split('T')[0])]);
+      rows.push([]);
+      rows.push(["________________________________________", "", "", "", "", "________________________________________"]);
+      rows.push(["Assinatura do servidor(a)", "", "", "", "", "Assinatura do Diretor(a)"]);
+      rows.push([]);
+      rows.push(["* Este documento poderá ser solicitado a qualquer momento pela Secretaria da Educação."]);
+
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      
+      ws['!cols'] = [
+        { wch: 14 },
+        { wch: 10 },
+        { wch: 10 },
+        { wch: 16 },
+        { wch: 38 },
+        { wch: 14 },
+        { wch: 10 },
+        { wch: 10 },
+        { wch: 16 }
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Compensação de Horas");
+
+      const fileName = `Compensacao_Horas_${(server.nome || 'Servidor').replace(/\s+/g, '_')}_${server.ano || '2026'}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+    }
+  </script>
+</body>
+</html>
